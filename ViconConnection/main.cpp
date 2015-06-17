@@ -1,5 +1,7 @@
 #include <QCoreApplication>
 #include "viconrecorder.h"
+
+// get rid of winsock error
 #pragma comment(lib,"Ws2_32.lib")
 
 int main(int argc, char **argv) {

@@ -11,6 +11,7 @@
 #include <QtCore>
 #include <QtSql>
 #include <QLinkedList>
+#include <QTextStream>
 
 #include <time.h>
 #include <iostream>

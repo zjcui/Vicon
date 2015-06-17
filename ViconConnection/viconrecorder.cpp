@@ -2,6 +2,7 @@
 #include "dos.h"
 #include "viconrecorder.h"
 
+
 using namespace std;
 
 #define BOT_INVALID		-1
@@ -74,30 +75,77 @@ ViconRecorder::~ViconRecorder( void )
 bool ViconRecorder::Initialize( void )
 {
 	// open database
-	if( !m_SqlHandler.openDB("192.168.1.150", "skynet", "root", "Anouck Girard") )
+    QTextStream cin (stdin, QIODevice :: ReadOnly);
+    QTextStream cout (stdout, QIODevice :: WriteOnly);
+
+    QString ServerAddress = "192.168.1.102";
+    QString ServerDB = "skynet";
+    QString ServerUser = "root";
+    QString ServerPwd = "password";
+    QString Default = "";
+    cout << "Default ServerAddress:" << ServerAddress << "\ntype \"n\" if changing default settings\ntype anything else if using default settings" << endl;
+    cout.flush ();
+    cin >> Default;
+    if (Default == "n")
+    {
+        cout << "Server IP Address:";
+        cout.flush ();
+        cin >> ServerAddress;
+        cout << "Server Database Name:";
+        cout.flush ();
+        cin >> ServerDB;
+        cout << "Server User Name:";
+        cout.flush ();
+        cin >> ServerUser;
+        cout << "Server Password:";
+        cout.flush ();
+        cin >> ServerPwd;
+    }
+
+    if( !m_SqlHandler.openDB(ServerAddress, ServerDB, ServerUser, ServerPwd) )
 	{
 		cout << "Failed  to connect to database" << endl;
+        cout.flush ();
 		cout << "Quiting in 3 seconds..." << endl;
+        cout.flush ();
 		Sleep(3000);
 		return false;
 	}
+
+    cout << "Successfully connected to the DB server@" << ServerAddress << endl;
 
 	// Clear out the botdata table so we are only working with new data
 	m_SqlHandler.queryCommand("truncate botdata");
 
 	//Initialization of m_pMocap System
-    string address = "192.168.1.130";
-	if( !m_pMocap->initialize(address) )
+    QString ViconAddress = "192.168.1.130";
+
+    cout << "\nDefault ViconAddress:" << ViconAddress << "\ntype \"n\" if changing default settings\ntype anything else if using default settings" << endl;
+    cout.flush ();
+    cin >> Default;
+    if (Default == "n")
+    {
+        cout << "Vicon IP Address:";
+        cout.flush ();
+        cin >> ViconAddress;
+    }
+
+    if( !m_pMocap->initialize(ViconAddress.toStdString()) )
 	{
-		cout << "Failed to connect to Mocap at " << address << endl;
+        cout << "Failed to connect to Mocap at " << ViconAddress << endl;
+        cout.flush ();
 		cout << "Quiting in 3 seconds..." << endl;
+        cout.flush ();
 		Sleep(3000);
 		return false;
 	}
 
+    cout << "Successfully connected to the Vicon@" << ViconAddress << endl;
+
 	// setup m_pBodies
 	int numbodies = 0;
 	cout << "Number of Bodies: ";
+    cout.flush ();
 	cin >> numbodies;
 
 	AddBodies( numbodies );
@@ -132,14 +180,15 @@ void ViconRecorder::ProcessPositions(void)
 			else if ( !isBotOnline(body->id) )
 			{
 				// This bot is not online and we shouldn't send a position update
+                cout << "Botid:" << body->id << "not online" << endl;
 				continue;
 			}
 
-			UpdatePosition(body);
+            UpdatePosition(body, 1);
 		}
 
 		// Wait 10 ms before polling for the next position
-		Sleep(10);
+        Sleep(2);
 	}
 
 	cout << "Stopped recording" << endl;
@@ -210,7 +259,8 @@ void ViconRecorder::UpdatePosition( ViconBody *body, bool bForce /*= false */ )
 	{
 		QSqlQuery query;
 		query.prepare("INSERT INTO botdata (botid, x, y, z, roll, pitch, yaw) "
-			"VALUES (:id, :x, :y, :z, :roll, :pitch, :yaw)");
+            "VALUES (:id, :x, :y, :z, :roll, :pitch, :yaw) "
+            "ON DUPLICATE KEY UPDATE x = VALUES(x), y = VALUES(y),z = VALUES(z),roll = VALUES(roll),pitch = VALUES(pitch),yaw = VALUES(yaw)");
 		query.bindValue(":id", body->id);
 		query.bindValue(":x", pos[0]);
 		query.bindValue(":y", pos[1]);
@@ -221,7 +271,8 @@ void ViconRecorder::UpdatePosition( ViconBody *body, bool bForce /*= false */ )
 
 		query.exec();
 
-        cout << "X: " << pos[0] <<" Y: " << pos[1] << " Z: " << pos[2] << "Roll: " << eori[0] <<" Pitch: " << eori[1] << " Yaw: " << eori[2] << endl;
+        // print out position and orientation for test ( time cosuming )
+        cout << "X: " << pos[0] <<" Y: " << pos[1] << " Z: " << pos[2] << " Roll: " << eori[0] <<" Pitch: " << eori[1] << " Yaw: " << eori[2] << endl;
 
 		body->prevPos[0] = posecmp[0];
 		body->prevPos[1] = posecmp[1];
